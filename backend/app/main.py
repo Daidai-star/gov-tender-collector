@@ -1,5 +1,8 @@
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
@@ -20,12 +23,21 @@ app.add_middleware(
 
 @app.on_event('startup')
 def startup_event() -> None:
-    init_db()
-    db = SessionLocal()
-    try:
-        ensure_seed_roles_and_admin(db, settings.seed_admin_username, settings.seed_admin_password)
-    finally:
-        db.close()
+    last_error: Exception | None = None
+    for attempt in range(1, settings.startup_db_retry_max_attempts + 1):
+        try:
+            init_db()
+            db = SessionLocal()
+            try:
+                ensure_seed_roles_and_admin(db, settings.seed_admin_username, settings.seed_admin_password)
+            finally:
+                db.close()
+            return
+        except SQLAlchemyError as exc:
+            last_error = exc
+            time.sleep(settings.startup_db_retry_delay_seconds)
+    if last_error:
+        raise last_error
 
 
 @app.get('/healthz')

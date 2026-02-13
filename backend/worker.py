@@ -1,15 +1,19 @@
 import logging
 import time
 
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.init_db import init_db
+from app.models.entities import CrawlJob, CrawlJobStatus
 from app.services.analysis_manager import run_ai_analysis
 from app.services.crawler.manager import run_crawl_job
-from app.models.entities import CrawlJob, CrawlJobStatus
 from app.services.queue import AI_QUEUE, CRAWL_QUEUE, dequeue
 from app.services.scheduler import CrawlScheduler
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+settings = get_settings()
 
 
 def process_crawl_message(payload: dict):
@@ -41,7 +45,7 @@ def process_ai_message(payload: dict):
 
 
 def loop_worker():
-    init_db()
+    _wait_for_database_ready()
     scheduler = CrawlScheduler()
     scheduler.start()
     logging.info('worker started and scheduler registered')
@@ -59,6 +63,21 @@ def loop_worker():
             time.sleep(0.1)
     finally:
         scheduler.stop()
+
+
+def _wait_for_database_ready() -> None:
+    last_error: Exception | None = None
+    for attempt in range(1, settings.startup_db_retry_max_attempts + 1):
+        try:
+            init_db()
+            logging.info('database ready for worker')
+            return
+        except SQLAlchemyError as exc:
+            last_error = exc
+            logging.warning('database not ready yet (attempt=%s): %s', attempt, exc)
+            time.sleep(settings.startup_db_retry_delay_seconds)
+    if last_error:
+        raise last_error
 
 
 if __name__ == '__main__':
