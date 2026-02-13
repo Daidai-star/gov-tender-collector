@@ -30,6 +30,8 @@ services:
   backend-api:
     build:
       context: ../backend
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
     env_file:
       - ../backend/.env
     volumes:
@@ -46,6 +48,8 @@ services:
   backend-worker:
     build:
       context: ../backend
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
     env_file:
       - ../backend/.env
     volumes:

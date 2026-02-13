@@ -6,7 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+RUN pip install --no-cache-dir --default-timeout=120 -r /app/requirements.txt
 
 COPY app /app/app
 COPY worker.py /app/worker.py
