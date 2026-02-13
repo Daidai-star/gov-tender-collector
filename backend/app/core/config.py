@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     crawl_site_concurrency: int = 4
     crawl_timeout_seconds: int = 20
     crawl_retry_times: int = 3
+    startup_db_retry_max_attempts: int = Field(default=30, alias='STARTUP_DB_RETRY_MAX_ATTEMPTS')
+    startup_db_retry_delay_seconds: int = Field(default=2, alias='STARTUP_DB_RETRY_DELAY_SECONDS')
 
     storage_root: str = Field(default='/data/attachments', alias='STORAGE_ROOT')
 
